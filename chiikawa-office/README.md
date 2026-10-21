@@ -28,4 +28,9 @@ node server.js    # 2) 서버 실행 → 브라우저에서 http://localhost:314
 서버가 꺼져 있어도 훅은 조용히 넘어가므로 Claude Code 사용에는 영향이 없어요.
 서버는 `127.0.0.1`에서만 열려서 내 컴퓨터 밖에서는 접근할 수 없어요.
 
+## 캐릭터 그림 바꾸기 (ChatGPT 등)
+
+`sprites/` 폴더에 `chiikawa.png`, `hachiware.png`, `usagi.png` 를 넣으면 손그림 대신 그 그림이 나와요.
+자세별 그림, 파일 이름 규칙은 [sprites/README.md](sprites/README.md) 참고.
+
 > 치이카와 캐릭터의 저작권은 나가노(ナガノ)에게 있습니다. 개인 감상용으로만 사용하세요.

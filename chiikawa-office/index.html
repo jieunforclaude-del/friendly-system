@@ -314,6 +314,20 @@ function drawDesk(i, t) {
 }
 
 // ---------- 캐릭터 ----------
+// sprites/ 폴더에 그림을 넣으면 손그림 대신 사용: chiikawa.png 또는 chiikawa-type.png 처럼 자세별로
+const SPRITE_H = 78;
+const POSES = ['sit', 'read', 'type', 'raise', 'jump', 'sleep', 'walk'];
+const sprites = {};
+for (const k of KINDS) {
+  for (const p of ['', ...POSES]) {
+    const name = p ? `${k}-${p}` : k;
+    const img = new Image();
+    img.onload = () => (sprites[name] = img);
+    img.src = `sprites/${name}.png`;
+  }
+}
+function spriteOf(k, pose) { return sprites[`${k}-${pose}`] || sprites[k]; }
+
 function poseOf(c) {
   if (c.path.length) return 'walk';
   return { thinking: 'sit', reading: 'read', typing: 'type', bash: 'type', delegate: 'type', plan: 'read',
@@ -336,6 +350,19 @@ function drawChar(c, t) {
   // 그림자
   ctx.fillStyle = 'rgba(80,50,30,.15)';
   ctx.beginPath(); ctx.ellipse(x, c.y + 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  const img = spriteOf(k, pose);
+  if (img) {
+    const h = SPRITE_H, w = h * img.width / img.height;
+    ctx.save();
+    if (pose === 'walk' && c.facing < 0) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.translate(-x, 0); }
+    if (pose === 'type') ctx.translate(0, Math.sin(t * 16) * 1.5);
+    ctx.drawImage(img, x - w / 2, y - h, w, h);
+    ctx.restore();
+    drawFx(c, x, y, pose, t);
+    ctx.restore();
+    return;
+  }
 
   // 발
   const sw = pose === 'walk' ? Math.sin(t * 12) * 4 : 0;
@@ -412,7 +439,12 @@ function drawChar(c, t) {
     ctx.beginPath(); ctx.arc(x - 2.5, ey + 6, 2.5, 0, Math.PI); ctx.arc(x + 2.5, ey + 6, 2.5, 0, Math.PI); ctx.stroke();
   }
 
-  // 효과
+  drawFx(c, x, y, pose, t);
+  ctx.restore();
+}
+
+// 땀·Zzz·물음표·반짝이
+function drawFx(c, x, y, pose, t) {
   ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (c.state === 'bash' && pose === 'type') {
     const dy = (t * 20) % 10;
@@ -436,7 +468,6 @@ function drawChar(c, t) {
       ctx.fillText('✦', x + Math.cos(a) * 40, y - 40 + Math.sin(a) * 30);
     }
   }
-  ctx.restore();
 }
 
 function drawBubble(c, t) {

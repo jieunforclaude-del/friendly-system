@@ -72,6 +72,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 직접 넣은 캐릭터 그림: sprites/chiikawa.png 등
+  const m = req.method === 'GET' && req.url.match(/^\/sprites\/([a-z-]+\.png)$/);
+  if (m) {
+    const file = path.join(__dirname, 'sprites', m[1]);
+    if (fs.existsSync(file)) {
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' });
+      fs.createReadStream(file).pipe(res);
+      return;
+    }
+  }
+
   res.writeHead(404).end();
 });
 
