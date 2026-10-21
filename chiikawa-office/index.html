@@ -353,7 +353,7 @@ for (const k of KINDS) {
 function trimTransparent(img) {
   try {
     const c = document.createElement('canvas');
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
     const g = c.getContext('2d');
     g.drawImage(img, 0, 0);
     const { data } = g.getImageData(0, 0, c.width, c.height);
@@ -380,7 +380,50 @@ for (const name of ['background', 'desk', 'sofa', 'plant']) {
   img.onload = () => (sprites[name] = name === 'background' ? img : trimTransparent(img));
   img.src = `sprites/${name}.png`;
 }
-function spriteOf(k, pose) { return sprites[`${k}-${pose}`] || sprites[k]; }
+// 한 장에 자세 4개를 가로로 그린 그림(chiikawa-sheet.png): 기본 · 낮잠 · 만세 · 손들기
+const SHEET_POSES = ['', 'sleep', 'jump', 'raise'];
+const sheets = {};
+for (const k of KINDS) {
+  const img = new Image();
+  img.onload = () => splitSheet(k, img);
+  img.src = `sprites/${k}-sheet.png`;
+}
+function splitSheet(k, img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const { data } = g.getImageData(0, 0, c.width, c.height);
+    // 세로줄마다 그림이 있는지 보고, 투명한 틈으로 나뉜 덩어리를 찾음
+    const filled = (x) => { for (let y = 0; y < c.height; y++) if (data[(y * c.width + x) * 4 + 3] > 16) return true; return false; };
+    let runs = [], start = -1;
+    for (let x = 0; x <= c.width; x++) {
+      const f = x < c.width && filled(x);
+      if (f && start < 0) start = x;
+      if (!f && start >= 0) { runs.push([start, x]); start = -1; }
+    }
+    // 가까운 덩어리(귀, 반짝이 등)는 합치고, 너무 작은 건 버림
+    const gap = c.width * 0.02;
+    runs = runs.reduce((a, r) => (a.length && r[0] - a[a.length - 1][1] < gap ? (a[a.length - 1][1] = r[1], a) : (a.push(r), a)), []);
+    runs = runs.filter((r) => r[1] - r[0] > c.width * 0.04);
+    if (runs.length > SHEET_POSES.length) runs = runs.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, SHEET_POSES.length).sort((a, b) => a[0] - b[0]);
+    if (runs.length !== SHEET_POSES.length) {
+      const w = c.width / SHEET_POSES.length; // 못 찾으면 똑같이 4등분
+      runs = SHEET_POSES.map((_, i) => [Math.round(i * w), Math.round((i + 1) * w)]);
+    }
+    SHEET_POSES.forEach((p, i) => {
+      const [x0, x1] = runs[i];
+      const part = document.createElement('canvas');
+      part.width = x1 - x0; part.height = c.height;
+      part.getContext('2d').drawImage(c, x0, 0, part.width, c.height, 0, 0, part.width, c.height);
+      sheets[p ? `${k}-${p}` : k] = trimTransparent(part);
+    });
+  } catch {}
+}
+function spriteOf(k, pose) {
+  return sprites[`${k}-${pose}`] || sheets[`${k}-${pose}`] || sprites[k] || sheets[k];
+}
 
 function poseOf(c) {
   if (c.path.length) return 'walk';
