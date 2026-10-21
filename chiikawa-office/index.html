@@ -322,8 +322,34 @@ for (const k of KINDS) {
   for (const p of ['', ...POSES]) {
     const name = p ? `${k}-${p}` : k;
     const img = new Image();
-    img.onload = () => (sprites[name] = img);
+    img.onload = () => (sprites[name] = trimTransparent(img));
     img.src = `sprites/${name}.png`;
+  }
+}
+// 그림 주변의 투명한 여백을 잘라내서 캐릭터 크기를 맞춤
+function trimTransparent(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const { data } = g.getImageData(0, 0, c.width, c.height);
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        if (data[(y * c.width + x) * 4 + 3] > 16) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return img;
+    const out = document.createElement('canvas');
+    out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    return out;
+  } catch {
+    return img; // file:// 로 열었을 때 등
   }
 }
 function spriteOf(k, pose) { return sprites[`${k}-${pose}`] || sprites[k]; }

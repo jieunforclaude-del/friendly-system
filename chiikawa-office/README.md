@@ -30,6 +30,22 @@ node server.js    # 2) 서버 실행 → 브라우저에서 http://localhost:314
 
 ## 캐릭터 그림 바꾸기 (ChatGPT 등)
 
+### 자동으로 (OpenAI API)
+
+[OpenAI API 키](https://platform.openai.com/api-keys)가 있으면 그림을 자동으로 만들어서 `sprites/`에 넣어줘요.
+
+```bash
+OPENAI_API_KEY=sk-... node generate.js            # 기본 그림 3장
+OPENAI_API_KEY=sk-... node generate.js --poses    # 자세별 그림까지 (총 24장)
+OPENAI_API_KEY=sk-... node generate.js usagi --force   # 마음에 안 드는 캐릭터만 다시
+```
+
+- Windows PowerShell: `$env:OPENAI_API_KEY="sk-..."; node generate.js`
+- 그림 1장마다 요금이 나가요. `--quality=low` 로 싸게, `--quality=high` 로 예쁘게.
+- 이미 있는 그림은 건너뛰니까, 몇 번 실행해도 새로 필요한 것만 그려요.
+
+### 직접 넣기
+
 `sprites/` 폴더에 `chiikawa.png`, `hachiware.png`, `usagi.png` 를 넣으면 손그림 대신 그 그림이 나와요.
 자세별 그림, 파일 이름 규칙은 [sprites/README.md](sprites/README.md) 참고.
 
