@@ -1,6 +1,6 @@
 # 🐹 치이카와 오피스
 
-Claude Code가 일하는 모습을 치이카와·하치와레·우사기가 사무실에서 일하는 장면으로 보여주는 개인용 대시보드.
+Claude Code가 일하는 모습을 치이카와·하치와레·우사기·시사·랏코·쿠리만쥬가 사무실에서 일하는 장면으로 보여주는 개인용 대시보드.
 
 - Claude Code 세션 하나 = 캐릭터 하나 (문으로 출근 → 책상에 앉음)
 - 파일 읽기/검색 📖 → 책 읽기 · 파일 수정 ✏️ → 타자 · 터미널 💻 → 땀 흘리며 타자
@@ -35,8 +35,8 @@ node server.js    # 2) 서버 실행 → 브라우저에서 http://localhost:314
 [OpenAI API 키](https://platform.openai.com/api-keys)가 있으면 그림을 자동으로 만들어서 `sprites/`에 넣어줘요.
 
 ```bash
-OPENAI_API_KEY=sk-... node generate.js            # 기본 그림 3장
-OPENAI_API_KEY=sk-... node generate.js --poses    # 자세별 그림까지 (총 24장)
+OPENAI_API_KEY=sk-... node generate.js            # 기본 그림 6장
+OPENAI_API_KEY=sk-... node generate.js --poses    # 자세별 그림까지 (총 48장)
 OPENAI_API_KEY=sk-... node generate.js usagi --force   # 마음에 안 드는 캐릭터만 다시
 ```
 
@@ -46,7 +46,7 @@ OPENAI_API_KEY=sk-... node generate.js usagi --force   # 마음에 안 드는 �
 
 ### 직접 넣기
 
-`sprites/` 폴더에 `chiikawa.png`, `hachiware.png`, `usagi.png` 를 넣으면 손그림 대신 그 그림이 나와요.
+`sprites/` 폴더에 `chiikawa.png`, `hachiware.png`, `usagi.png`, `shisa.png`, `rakko.png`, `kurimanju.png` 를 넣으면 손그림 대신 그 그림이 나와요.
 자세별 그림, 파일 이름 규칙은 [sprites/README.md](sprites/README.md) 참고.
 
 > 치이카와 캐릭터의 저작권은 나가노(ナガノ)에게 있습니다. 개인 감상용으로만 사용하세요.

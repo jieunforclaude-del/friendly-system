@@ -7,6 +7,9 @@
 | `chiikawa.png` | 치이카와 |
 | `hachiware.png` | 하치와레 |
 | `usagi.png` | 우사기 |
+| `shisa.png` | 시사 |
+| `rakko.png` | 랏코 |
+| `kurimanju.png` | 쿠리만쥬 |
 
 자세별로 따로 넣고 싶으면 `이름-자세.png` 로 저장하면 그 자세일 때만 그 그림이 쓰여요.
 (없는 자세는 기본 그림 사용)

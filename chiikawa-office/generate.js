@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // OpenAI 이미지 API로 캐릭터 그림을 만들어 sprites/ 에 저장
-//   node generate.js                 기본 그림 3장 (치이카와·하치와레·우사기)
+//   node generate.js                 기본 그림 6장 (치이카와·하치와레·우사기·시사·랏코·쿠리만쥬)
 //   node generate.js --poses         자세별 그림까지 (기본 그림을 참고해서 같은 모습으로)
 //   node generate.js usagi --force   우사기만 다시 그리기
 const fs = require('fs');
@@ -25,6 +25,9 @@ const CHARS = {
   chiikawa: 'A tiny round white hamster-like creature that is mostly head, two small round ears on top, stubby little arms and feet, shy and gentle.',
   hachiware: 'A tiny round white cat-like creature whose top of the head is blue-gray, split in the middle by a white upside-down V parting, blue-gray pointed cat ears, cheerful smile.',
   usagi: 'A tiny round pale-yellow rabbit-like creature with two long upright ears, round eyes, energetic slightly wild expression.',
+  shisa: 'A tiny round light-orange Okinawan shisa lion-dog creature with a fluffy curly darker-orange mane around the face, small round ears, earnest and hardworking.',
+  rakko: 'A tiny round light gray-brown sea otter creature with a white muzzle area, small round ears, calm and cool confident expression.',
+  kurimanju: 'A tiny round chestnut-bun creature: the top of the head is glossy brown like a chestnut shell, the rest is light beige, no ears, relaxed and satisfied expression.',
 };
 const POSES = {
   type: 'arms stretched forward as if typing on a keyboard, focused (do not draw the keyboard)',
