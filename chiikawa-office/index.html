@@ -222,6 +222,13 @@ const OUT = '#4a3f3a';
 
 // ---------- 방 ----------
 function drawRoom(t) {
+  const bg = sprites.background;
+  if (bg) {
+    // 화면을 꽉 채우도록 (비율이 달라도 가운데 기준으로 잘라서)
+    const k = Math.max(W / bg.width, H / bg.height), w = bg.width * k, h = bg.height * k;
+    ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
+    return;
+  }
   // 벽
   ctx.fillStyle = '#fdeedd'; ctx.fillRect(0, 0, W, WALL);
   ctx.fillStyle = '#f9e1cb';
@@ -279,18 +286,21 @@ function drawRoom(t) {
 }
 
 function drawPlant(x, y) {
+  if (drawFurniture('plant', x, y, 64)) return;
   ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
   ell(x - 14, y - 52, 12, 20, '#8fd18a'); ell(x + 14, y - 52, 12, 20, '#8fd18a'); ell(x, y - 64, 12, 22, '#a4de9c');
   rrect(x - 18, y - 36, 36, 36, 6, '#e98f6f', OUT);
 }
 
 function drawSofa() {
+  if (drawFurniture('sofa', 855, 345, 215)) return;
   ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
   rrect(760, 262, 190, 56, 18, '#f6b6c4', OUT);
   rrect(748, 290, 30, 50, 12, '#f29fb2', OUT);
   rrect(932, 290, 30, 50, 12, '#f29fb2', OUT);
 }
 function drawSofaFront() {
+  if (sprites.sofa) return;
   ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
   rrect(770, 310, 172, 30, 10, '#f8c3cf', OUT);
 }
@@ -299,6 +309,7 @@ function drawDesk(i, t) {
   const [x, y] = DESKS[i];
   ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
   // 노트북 (뒷면)
+  if (drawFurniture('desk', x, y + 14, 150)) return;
   const owner = [...chars.values()].find((c) => c.desk === i && !c.path.length && !['idle', 'leaving'].includes(c.state));
   rrect(x + 24, y - 66, 40, 34, 5, '#dcdcdc', OUT);
   ell(x + 44, y - 49, 4, 4, owner ? '#ffe28a' : '#bbb', false);
@@ -314,6 +325,15 @@ function drawDesk(i, t) {
     const s = Math.sin(t * 3) * 2;
     ctx.beginPath(); ctx.moveTo(x - 61, y - 50); ctx.quadraticCurveTo(x - 56 + s, y - 58, x - 61, y - 66); ctx.stroke();
   }
+}
+
+// 가구 그림(sprites/desk.png 등)이 있으면 가운데 x, 바닥 y 에 맞춰 그림
+function drawFurniture(name, cx, bottom, width) {
+  const img = sprites[name];
+  if (!img) return false;
+  const h = width * img.height / img.width;
+  ctx.drawImage(img, cx - width / 2, bottom - h, width, h);
+  return true;
 }
 
 // ---------- 캐릭터 ----------
@@ -354,6 +374,11 @@ function trimTransparent(img) {
   } catch {
     return img; // file:// 로 열었을 때 등
   }
+}
+for (const name of ['background', 'desk', 'sofa', 'plant']) {
+  const img = new Image();
+  img.onload = () => (sprites[name] = name === 'background' ? img : trimTransparent(img));
+  img.src = `sprites/${name}.png`;
 }
 function spriteOf(k, pose) { return sprites[`${k}-${pose}`] || sprites[k]; }
 
