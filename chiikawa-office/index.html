@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>치이카와 오피스</title>
+<style>
+  :root { --bg:#fff6ee; --ink:#4a3f3a; --panel:#fffdfb; --line:#f1d9c6; --pink:#f6a5b5; --sub:#9a8a82; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#28211f; --ink:#f5ebe3; --panel:#332b28; --line:#4c403a; --sub:#b5a59c; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif; }
+  header { display:flex; align-items:center; gap:10px; padding:14px 16px 10px; flex-wrap:wrap; }
+  h1 { font-size:20px; margin:0; }
+  .status { font-size:12px; padding:3px 10px; border-radius:99px; background:#eee; color:#777; }
+  .status.on { background:#d6f3d2; color:#2f6b2a; }
+  .spacer { flex:1; }
+  button { font:inherit; font-size:13px; border:2px solid var(--line); background:var(--panel); color:var(--ink);
+    border-radius:99px; padding:5px 14px; cursor:pointer; }
+  button.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:12px; padding:0 16px 16px; }
+  @media (max-width:900px) { main { grid-template-columns:minmax(0,1fr); } }
+  canvas { width:100%; height:auto; display:block; border-radius:18px; border:3px solid var(--line); background:#fdf3e7; }
+  aside { background:var(--panel); border:3px solid var(--line); border-radius:18px; padding:12px 14px;
+    max-height:min(600px,70vh); overflow:auto; font-size:13px; }
+  aside h2 { font-size:14px; margin:0 0 8px; }
+  #log div { padding:5px 0; border-bottom:1px dashed var(--line); line-height:1.4; }
+  #log time { color:var(--sub); font-size:11px; margin-right:6px; }
+  .empty { color:var(--sub); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐹 치이카와 오피스</h1>
+  <span id="status" class="status">연결 중…</span>
+  <span class="spacer"></span>
+  <button id="demo">데모 모드</button>
+</header>
+<main>
+  <canvas id="office"></canvas>
+  <aside>
+    <h2>업무 일지</h2>
+    <div id="log"><div class="empty">Claude Code가 일하면 여기에 기록돼요.</div></div>
+  </aside>
+</main>
+<script>
+const W = 960, H = 600;
+const cv = document.getElementById('office');
+const ctx = cv.getContext('2d');
+const dpr = Math.max(1, window.devicePixelRatio || 1);
+cv.width = W * dpr; cv.height = H * dpr;
+ctx.scale(dpr, dpr);
+
+const KINDS = ['chiikawa', 'hachiware', 'usagi'];
+const NAMES = { chiikawa: '치이카와', hachiware: '하치와레', usagi: '우사기' };
+const DONE_LINES = {
+  chiikawa: ['와…!', '해냈다…!', '헤헤…'],
+  hachiware: ['어떻게든 됐다~!', '대단해!', '해냈어!'],
+  usagi: ['야하!', '우라!', '후웅!'],
+};
+const WALL = 180, AISLE_TOP = 215, AISLE_MID = 385;
+const DESKS = [[220, 300], [420, 300], [620, 300], [220, 470], [420, 470], [620, 470]];
+const SOFA = [[790, 322], [855, 322], [920, 322]];
+const DOOR = [70, AISLE_TOP];
+const SPEED = 150;
+const S = 1.3; // 캐릭터 크기
+
+const chars = new Map();
+let spawnCount = 0;
+
+// ---------- 상태 ----------
+const TOOL_STATE = {
+  Read: ['reading', '📖 읽는 중'], Grep: ['reading', '🔍 찾는 중'], Glob: ['reading', '🔍 찾는 중'],
+  LS: ['reading', '📂 둘러보는 중'], WebFetch: ['reading', '🌐 보는 중'], WebSearch: ['reading', '🌐 검색 중'],
+  Edit: ['typing', '✏️ 고치는 중'], MultiEdit: ['typing', '✏️ 고치는 중'], Write: ['typing', '📝 쓰는 중'],
+  NotebookEdit: ['typing', '✏️ 고치는 중'], Bash: ['bash', '💻'], Task: ['delegate', '👥 부탁하는 중'],
+  Agent: ['delegate', '👥 부탁하는 중'], TodoWrite: ['plan', '📋 할 일 정리'],
+};
+
+function freeDesk() {
+  const used = new Set([...chars.values()].map((c) => c.desk));
+  for (let i = 0; i < DESKS.length; i++) if (!used.has(i)) return i;
+  return chars.size % DESKS.length;
+}
+
+function spawn(id, cwd) {
+  const kind = KINDS[spawnCount++ % KINDS.length];
+  const desk = freeDesk();
+  const c = { id, kind, desk, cwd, x: DOOR[0], y: DOOR[1], path: [], state: 'thinking',
+    bubble: '', bubbleUntil: 0, since: performance.now() / 1000, last: Date.now(), facing: 1 };
+  chars.set(id, c);
+  route(c);
+  return c;
+}
+
+function seatOf(c) {
+  if (c.state === 'leaving') return DOOR;
+  if (c.state === 'idle') return SOFA[c.desk % SOFA.length];
+  const [dx, dy] = DESKS[c.desk];
+  return [dx - 14, dy - 22];
+}
+
+function route(c) {
+  const [tx, ty] = seatOf(c);
+  if (Math.hypot(tx - c.x, ty - c.y) < 2 && !c.path.length) return;
+  const cy = c.y <= 320 && ty <= 320 ? AISLE_TOP : AISLE_MID;
+  c.path = [[c.x, cy], [tx, cy], [tx, ty]];
+}
+
+function setState(c, state, bubble, hold = 6) {
+  const now = performance.now() / 1000;
+  const prev = c.state;
+  c.state = state;
+  c.since = now;
+  if (bubble !== undefined) { c.bubble = bubble; c.bubbleUntil = now + hold; }
+  if (prev !== state && (prev === 'idle' || state === 'idle' || state === 'leaving' || prev === 'leaving')) route(c);
+}
+
+function say(c, text, hold) { setState(c, c.state, text, hold); }
+
+function handle(ev) {
+  const id = ev.session_id || 'default';
+  let c = chars.get(id);
+  if (!c) {
+    if (ev.event === 'SessionEnd') return;
+    c = spawn(id, ev.cwd);
+  }
+  if (ev.cwd) c.cwd = ev.cwd;
+  c.last = Date.now();
+  const name = NAMES[c.kind];
+  let text = '';
+
+  switch (ev.event) {
+    case 'SessionStart':
+      setState(c, 'thinking', '출근!', 3); text = '출근했어요';
+      break;
+    case 'UserPromptSubmit':
+      setState(c, 'thinking', '💭 …', 4); text = '새 부탁을 받았어요';
+      break;
+    case 'PreToolUse': {
+      const [st, label] = TOOL_STATE[ev.tool] || ['typing', `🔧 ${ev.tool}`];
+      const b = ev.detail ? `${label} ${trim(ev.detail, 22)}` : label;
+      setState(c, st, b, 60); text = b;
+      break;
+    }
+    case 'PostToolUse':
+      if (c.state === 'waiting') setState(c, 'thinking', '허락 받았다!', 2);
+      break;
+    case 'Notification':
+      if (/permission|허가|권한/i.test(ev.message)) {
+        setState(c, 'waiting', '🙋 허락해줘!', 9999); text = '허락을 기다리는 중';
+      } else {
+        say(c, '불러줘~', 9999); text = '다음 부탁을 기다리는 중';
+      }
+      break;
+    case 'Stop':
+      if (ev.replay) { setState(c, 'idle', '', 0); break; }
+      setState(c, 'done', pick(DONE_LINES[c.kind]), 5); text = '일을 끝냈어요 ✨';
+      break;
+    case 'SubagentStop':
+      say(c, '👥 도움 받았다!', 3);
+      break;
+    case 'SessionEnd':
+      setState(c, 'leaving', '퇴근~', 4); text = '퇴근했어요';
+      break;
+  }
+  if (text && !ev.replay) log(`<b>${name}</b>${c.cwd ? ` <small>(${esc(c.cwd)})</small>` : ''} · ${esc(text)}`);
+}
+
+function trim(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function esc(s) { return String(s).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])); }
+
+const logEl = document.getElementById('log');
+function log(html) {
+  const empty = logEl.querySelector('.empty');
+  if (empty) empty.remove();
+  const d = document.createElement('div');
+  const t = new Date();
+  d.innerHTML = `<time>${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}</time>${html}`;
+  logEl.prepend(d);
+  while (logEl.children.length > 150) logEl.lastChild.remove();
+}
+
+// ---------- 업데이트 ----------
+function update(dt, t) {
+  for (const c of [...chars.values()]) {
+    if (c.state === 'done' && t - c.since > 6) setState(c, 'idle');
+    const quiet = Date.now() - c.last;
+    if (quiet > 15 * 60e3 && !['idle', 'leaving', 'waiting'].includes(c.state)) setState(c, 'idle');
+    if (quiet > 3 * 3600e3 && c.state !== 'leaving') setState(c, 'leaving', '퇴근~', 4);
+
+    if (c.path.length) {
+      const [px, py] = c.path[0];
+      const dx = px - c.x, dy = py - c.y, d = Math.hypot(dx, dy), step = SPEED * dt;
+      if (Math.abs(dx) > 0.5) c.facing = Math.sign(dx);
+      if (d <= step) { c.x = px; c.y = py; c.path.shift(); }
+      else { c.x += (dx / d) * step; c.y += (dy / d) * step; }
+    } else if (c.state === 'leaving') {
+      chars.delete(c.id);
+    }
+  }
+}
+
+// ---------- 그리기 도구 ----------
+function ell(x, y, rx, ry, fill, stroke = true) {
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) ctx.stroke();
+}
+function rrect(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+const OUT = '#4a3f3a';
+
+// ---------- 방 ----------
+function drawRoom(t) {
+  // 벽
+  ctx.fillStyle = '#fdeedd'; ctx.fillRect(0, 0, W, WALL);
+  ctx.fillStyle = '#f9e1cb';
+  for (let x = 0; x < W; x += 40) ctx.fillRect(x, 0, 20, WALL);
+  ctx.fillStyle = '#e9c7a8'; ctx.fillRect(0, WALL - 12, W, 12);
+  // 바닥
+  ctx.fillStyle = '#f3d9bb'; ctx.fillRect(0, WALL, W, H - WALL);
+  ctx.strokeStyle = '#e7c6a2'; ctx.lineWidth = 2;
+  for (let y = WALL + 30; y < H; y += 30) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    const off = (y / 30) % 2 ? 0 : 60;
+    for (let x = off; x < W; x += 120) { ctx.beginPath(); ctx.moveTo(x, y - 30); ctx.lineTo(x, y); ctx.stroke(); }
+  }
+  // 러그
+  ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
+  ell(850, 380, 105, 40, '#cfe8f3');
+  ell(850, 380, 85, 30, null);
+
+  // 문
+  ctx.strokeStyle = OUT; ctx.lineWidth = 2.5;
+  rrect(38, 62, 64, WALL - 62, 8, '#d9a87c', OUT);
+  rrect(46, 72, 48, 40, 6, '#e8c09b', OUT);
+  ell(90, 130, 4, 4, '#ffd76a');
+
+  // 창문
+  rrect(160, 30, 190, 100, 10, '#bfe6ff', OUT);
+  ctx.fillStyle = '#fff';
+  const cx = 160 + ((t * 8) % 230) - 20;
+  ctx.save(); ctx.beginPath(); ctx.roundRect(160, 30, 190, 100, 10); ctx.clip();
+  ell(cx, 65, 22, 10, '#fff', false); ell(cx + 18, 60, 16, 10, '#fff', false);
+  ell(cx + 110 > 360 ? cx - 120 : cx + 110, 100, 18, 8, '#fff', false);
+  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(255, 30); ctx.lineTo(255, 130); ctx.moveTo(160, 80); ctx.lineTo(350, 80); ctx.stroke();
+
+  // 간판
+  rrect(410, 40, 200, 56, 14, '#fff', OUT);
+  ctx.fillStyle = OUT; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('ちいかわオフィス', 510, 61);
+  ctx.font = '12px sans-serif'; ctx.fillStyle = '#b07a6a'; ctx.fillText('Claude Code 지부', 510, 82);
+
+  // 시계
+  const now = new Date();
+  ell(680, 70, 30, 30, '#fff');
+  const hA = ((now.getHours() % 12) + now.getMinutes() / 60) / 12 * Math.PI * 2 - Math.PI / 2;
+  const mA = now.getMinutes() / 60 * Math.PI * 2 - Math.PI / 2;
+  ctx.beginPath(); ctx.moveTo(680, 70); ctx.lineTo(680 + Math.cos(hA) * 14, 70 + Math.sin(hA) * 14);
+  ctx.moveTo(680, 70); ctx.lineTo(680 + Math.cos(mA) * 22, 70 + Math.sin(mA) * 22); ctx.stroke();
+
+  // 게시판
+  rrect(750, 36, 170, 104, 8, '#c99a6e', OUT);
+  const notes = [['#fff4a8', 765, 48], ['#ffd1dc', 830, 52], ['#c9f0d0', 790, 90], ['#d2e6ff', 860, 92]];
+  for (const [col, x, y] of notes) { rrect(x, y, 44, 34, 3, col, OUT); }
+  ctx.fillStyle = OUT; ctx.font = '11px sans-serif';
+  ctx.fillText('제초', 787, 66); ctx.fillText('토벌', 852, 70); ctx.fillText('라멘', 812, 108); ctx.fillText('휴식', 882, 110);
+}
+
+function drawPlant(x, y) {
+  ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
+  ell(x - 14, y - 52, 12, 20, '#8fd18a'); ell(x + 14, y - 52, 12, 20, '#8fd18a'); ell(x, y - 64, 12, 22, '#a4de9c');
+  rrect(x - 18, y - 36, 36, 36, 6, '#e98f6f', OUT);
+}
+
+function drawSofa() {
+  ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
+  rrect(760, 262, 190, 56, 18, '#f6b6c4', OUT);
+  rrect(748, 290, 30, 50, 12, '#f29fb2', OUT);
+  rrect(932, 290, 30, 50, 12, '#f29fb2', OUT);
+}
+function drawSofaFront() {
+  ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
+  rrect(770, 310, 172, 30, 10, '#f8c3cf', OUT);
+}
+
+function drawDesk(i, t) {
+  const [x, y] = DESKS[i];
+  ctx.lineWidth = 2.5; ctx.strokeStyle = OUT;
+  // 노트북 (뒷면)
+  const owner = [...chars.values()].find((c) => c.desk === i && !c.path.length && !['idle', 'leaving'].includes(c.state));
+  rrect(x + 24, y - 66, 40, 34, 5, '#dcdcdc', OUT);
+  ell(x + 44, y - 49, 4, 4, owner ? '#ffe28a' : '#bbb', false);
+  // 상판 + 앞판
+  rrect(x - 70, y - 32, 140, 14, 5, '#e9b787', OUT);
+  rrect(x - 64, y - 20, 128, 34, 4, '#d39c6b', OUT);
+  ctx.fillStyle = '#c48a58'; ctx.fillRect(x - 54, y - 10, 108, 3);
+  // 머그컵
+  rrect(x - 66, y - 46, 14, 16, 3, '#fff', OUT);
+  ctx.beginPath(); ctx.arc(x - 50, y - 38, 5, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  if (owner) {
+    ctx.strokeStyle = 'rgba(160,140,130,.6)'; ctx.lineWidth = 1.5;
+    const s = Math.sin(t * 3) * 2;
+    ctx.beginPath(); ctx.moveTo(x - 61, y - 50); ctx.quadraticCurveTo(x - 56 + s, y - 58, x - 61, y - 66); ctx.stroke();
+  }
+}
+
+// ---------- 캐릭터 ----------
+function poseOf(c) {
+  if (c.path.length) return 'walk';
+  return { thinking: 'sit', reading: 'read', typing: 'type', bash: 'type', delegate: 'type', plan: 'read',
+    waiting: 'raise', done: 'jump', idle: 'sleep' }[c.state] || 'sit';
+}
+
+function drawChar(c, t) {
+  const pose = poseOf(c);
+  const k = c.kind;
+  let x = c.x, y = c.y;
+  if (pose === 'walk') y -= Math.abs(Math.sin(t * 12)) * 4;
+  if (pose === 'jump') y -= Math.abs(Math.sin(t * 7)) * 18;
+  if (pose === 'type') y += Math.sin(t * 16) * 0.8;
+  if (pose === 'sleep') y += Math.sin(t * 2) * 1.2;
+  const body = k === 'usagi' ? '#f8e8a3' : '#ffffff';
+  const blue = '#7a8fb3';
+  ctx.save(); ctx.translate(c.x, c.y); ctx.scale(S, S); ctx.translate(-c.x, -c.y);
+  ctx.lineWidth = 2.2; ctx.strokeStyle = OUT;
+
+  // 그림자
+  ctx.fillStyle = 'rgba(80,50,30,.15)';
+  ctx.beginPath(); ctx.ellipse(x, c.y + 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // 발
+  const sw = pose === 'walk' ? Math.sin(t * 12) * 4 : 0;
+  ell(x - 8 + sw, y - 3, 7, 4.5, body); ell(x + 8 - sw, y - 3, 7, 4.5, body);
+
+  // 귀
+  if (k === 'chiikawa') { ell(x - 17, y - 60, 7, 7, body); ell(x + 17, y - 60, 7, 7, body); }
+  if (k === 'usagi') {
+    const wig = Math.sin(t * 4) * 0.06;
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.translate(x + s * 9, y - 62); ctx.rotate(s * 0.12 + wig);
+      ell(0, -16, 6.5, 19, body); ctx.restore();
+    }
+  }
+  if (k === 'hachiware') {
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(x + s * 8, y - 60); ctx.lineTo(x + s * 22, y - 74); ctx.lineTo(x + s * 26, y - 52); ctx.closePath();
+      ctx.fillStyle = blue; ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // 몸 + 머리
+  ell(x, y - 15, 17, 13, body);
+  ell(x, y - 40, 28, 23.5, body);
+  if (k === 'hachiware') {
+    ctx.save(); ctx.beginPath(); ctx.ellipse(x, y - 40, 28, 23.5, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(x - 32, y - 40); ctx.lineTo(x - 32, y - 70); ctx.lineTo(x + 32, y - 70); ctx.lineTo(x + 32, y - 40);
+    ctx.quadraticCurveTo(x + 20, y - 49, x + 8, y - 47); ctx.lineTo(x, y - 62); ctx.lineTo(x - 8, y - 47);
+    ctx.quadraticCurveTo(x - 20, y - 49, x - 32, y - 40); ctx.closePath();
+    ctx.fillStyle = blue; ctx.fill(); ctx.restore();
+    ell(x, y - 40, 28, 23.5, null);
+  }
+
+  // 팔
+  if (pose === 'raise') { ell(x - 17, y - 15, 5, 7, body); ell(x + 22, y - 48 + Math.sin(t * 8) * 2, 5, 9, body); }
+  else if (pose === 'jump') { ell(x - 22, y - 46, 5, 8, body); ell(x + 22, y - 46, 5, 8, body); }
+  else if (pose === 'type') {
+    const a = Math.sin(t * 18) * 2;
+    ell(x - 10, y - 18 + a, 5.5, 4.5, body); ell(x + 10, y - 18 - a, 5.5, 4.5, body);
+  } else if (pose === 'read') {
+    rrect(x - 15, y - 30, 30, 20, 3, '#9fd3a8', OUT);
+    ctx.beginPath(); ctx.moveTo(x, y - 30); ctx.lineTo(x, y - 10); ctx.stroke();
+    ell(x - 16, y - 20, 4.5, 4.5, body); ell(x + 16, y - 20, 4.5, 4.5, body);
+  } else if (pose === 'walk') {
+    ell(x - 18, y - 16 - sw * 0.5, 5, 6.5, body); ell(x + 18, y - 16 + sw * 0.5, 5, 6.5, body);
+  } else { ell(x - 18, y - 15, 5, 6.5, body); ell(x + 18, y - 15, 5, 6.5, body); }
+
+  // 얼굴
+  const ey = y - 40, eo = 10;
+  ctx.fillStyle = OUT;
+  if (pose === 'sleep') {
+    ctx.lineWidth = 2;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(x + s * eo, ey - 1, 3.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+  } else if (pose === 'jump' && k !== 'usagi') {
+    ctx.lineWidth = 2;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(x + s * eo, ey + 2, 3.8, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke(); }
+  } else {
+    const blink = (t + c.desk * 1.3) % 4 < 0.12;
+    for (const s of [-1, 1]) {
+      if (blink) { ctx.fillRect(x + s * eo - 3.5, ey - 1, 7, 2); continue; }
+      ctx.beginPath(); ctx.ellipse(x + s * eo, ey, 3.4, 4, 0, 0, Math.PI * 2); ctx.fillStyle = OUT; ctx.fill();
+      ctx.beginPath(); ctx.arc(x + s * eo + 1, ey - 1.6, 1.3, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    }
+  }
+  if (k !== 'usagi') {
+    ctx.fillStyle = 'rgba(246,150,170,.75)';
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + s * 18, ey + 7, 5.5, 3.2, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.lineWidth = 1.8; ctx.strokeStyle = OUT;
+  const open = pose === 'jump' || pose === 'raise' || (k === 'usagi' && pose === 'walk');
+  if (open) {
+    ctx.beginPath(); ctx.ellipse(x, ey + 9, 4.5, 4, 0, 0, Math.PI * 2); ctx.fillStyle = '#7a3b3b'; ctx.fill(); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(x - 2.5, ey + 6, 2.5, 0, Math.PI); ctx.arc(x + 2.5, ey + 6, 2.5, 0, Math.PI); ctx.stroke();
+  }
+
+  // 효과
+  ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (c.state === 'bash' && pose === 'type') {
+    const dy = (t * 20) % 10;
+    ctx.beginPath(); ctx.moveTo(x + 30, y - 66 + dy); ctx.quadraticCurveTo(x + 36, y - 56 + dy, x + 30, y - 54 + dy);
+    ctx.quadraticCurveTo(x + 24, y - 56 + dy, x + 30, y - 66 + dy); ctx.fillStyle = '#9ad3ff'; ctx.fill(); ctx.stroke();
+  }
+  if (pose === 'sleep') {
+    ctx.fillStyle = '#8a7fb8';
+    for (let i = 0; i < 3; i++) {
+      const p = (t * 0.6 + i / 3) % 1;
+      ctx.globalAlpha = 1 - p; ctx.font = `bold ${10 + i * 3}px sans-serif`;
+      ctx.fillText('Z', x + 24 + p * 16, y - 66 - p * 26);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (pose === 'sit' && c.state === 'thinking') { ctx.fillStyle = '#c47a8a'; ctx.fillText('?', x + 30, y - 66 + Math.sin(t * 3) * 2); }
+  if (pose === 'jump') {
+    ctx.fillStyle = '#ffcc33';
+    for (let i = 0; i < 4; i++) {
+      const a = t * 2 + i * Math.PI / 2;
+      ctx.fillText('✦', x + Math.cos(a) * 40, y - 40 + Math.sin(a) * 30);
+    }
+  }
+  ctx.restore();
+}
+
+function drawBubble(c, t) {
+  const now = performance.now() / 1000;
+  if (!c.bubble || now > c.bubbleUntil) return;
+  const top = c.y - ((c.kind === 'usagi' ? 108 : 84) + (poseOf(c) === 'jump' ? 18 : 0)) * S;
+  ctx.font = '13px "Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
+  const w = Math.min(220, ctx.measureText(c.bubble).width + 20), h = 26;
+  let bx = Math.max(6, Math.min(W - w - 6, c.x - w / 2));
+  ctx.lineWidth = 2; ctx.strokeStyle = OUT;
+  const urgent = c.state === 'waiting';
+  rrect(bx, top - h, w, h, 12, urgent ? '#fff1a8' : '#ffffff', OUT);
+  ctx.beginPath(); ctx.moveTo(c.x - 6, top - 1); ctx.lineTo(c.x, top + 8); ctx.lineTo(c.x + 6, top - 1);
+  ctx.fillStyle = urgent ? '#fff1a8' : '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(c.x - 6, top); ctx.lineTo(c.x, top + 8); ctx.lineTo(c.x + 6, top); ctx.stroke();
+  ctx.fillStyle = OUT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(trim(c.bubble, 26), bx + w / 2, top - h / 2 + 1, w - 12);
+}
+
+function drawLabel(c) {
+  const seated = !c.path.length && !['idle', 'leaving'].includes(c.state);
+  const y = seated ? DESKS[c.desk][1] + 28 : c.y + 16;
+  const text = c.cwd ? `${NAMES[c.kind]} · ${trim(c.cwd, 14)}` : NAMES[c.kind];
+  ctx.font = 'bold 11px sans-serif';
+  const w = ctx.measureText(text).width + 14;
+  ctx.lineWidth = 1.5;
+  rrect(c.x - w / 2, y - 9, w, 18, 9, 'rgba(255,255,255,.85)', '#d9b79a');
+  ctx.fillStyle = OUT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, c.x, y + 1);
+}
+
+// ---------- 루프 ----------
+let lastT = performance.now();
+function frame(nowMs) {
+  const dt = Math.min(0.05, (nowMs - lastT) / 1000); lastT = nowMs;
+  const t = nowMs / 1000;
+  update(dt, t);
+  ctx.clearRect(0, 0, W, H);
+  drawRoom(t);
+
+  const items = [
+    { z: 250, draw: drawSofa },
+    { z: 340, draw: drawSofaFront },
+    { z: 200, draw: () => drawPlant(130, 200) },
+    { z: H, draw: () => drawPlant(910, 590) },
+    ...DESKS.map((d, i) => ({ z: d[1], draw: () => drawDesk(i, t) })),
+    ...[...chars.values()].map((c) => ({ z: c.y, draw: () => drawChar(c, t) })),
+  ];
+  // 소파 위 캐릭터는 소파 등받이 앞, 앞쿠션 뒤
+  items.sort((a, b) => a.z - b.z).forEach((it) => it.draw());
+  for (const c of chars.values()) drawLabel(c);
+  for (const c of chars.values()) drawBubble(c, t);
+
+  if (!chars.size) {
+    ctx.fillStyle = 'rgba(74,63,58,.55)'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('아직 아무도 출근 안 했어요… Claude Code를 실행해 보세요', W / 2, 545);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- 연결 ----------
+const statusEl = document.getElementById('status');
+if (location.protocol.startsWith('http')) {
+  const es = new EventSource('/events');
+  es.onopen = () => { statusEl.textContent = '연결됨'; statusEl.className = 'status on'; };
+  es.onerror = () => { statusEl.textContent = '서버 연결 끊김'; statusEl.className = 'status'; };
+  es.onmessage = (m) => { try { handle(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+} else {
+  statusEl.textContent = '서버 없음 (데모로 구경하기)';
+}
+
+// ---------- 데모 ----------
+const demoBtn = document.getElementById('demo');
+let demoTimer = null;
+const DEMO_TOOLS = [
+  ['Read', 'README.md'], ['Grep', 'TODO'], ['Edit', 'index.html'], ['Write', 'post-osaka.md'],
+  ['Bash', 'npm test'], ['WebSearch', '오사카 맛집'], ['TodoWrite', ''], ['Task', '자료 조사'], ['Glob', '**/*.md'],
+];
+const DEMO_SESS = [['demo-1', 'blog'], ['demo-2', 'my-app'], ['demo-3', 'travel-notes']];
+function demoTick() {
+  const [sid, cwd] = pick(DEMO_SESS);
+  const c = chars.get(sid);
+  const r = Math.random();
+  if (!c) return handle({ session_id: sid, cwd, event: 'SessionStart' });
+  if (c.state === 'idle') return handle({ session_id: sid, cwd, event: r < 0.15 ? 'SessionEnd' : 'UserPromptSubmit' });
+  if (c.state === 'waiting') return handle({ session_id: sid, cwd, event: 'PostToolUse' });
+  if (r < 0.1) return handle({ session_id: sid, cwd, event: 'Stop' });
+  if (r < 0.17) return handle({ session_id: sid, cwd, event: 'Notification', message: 'Claude needs your permission to use Bash' });
+  const [tool, detail] = pick(DEMO_TOOLS);
+  handle({ session_id: sid, cwd, event: 'PreToolUse', tool, detail });
+}
+demoBtn.onclick = () => {
+  if (demoTimer) {
+    clearInterval(demoTimer); demoTimer = null; demoBtn.classList.remove('on'); demoBtn.textContent = '데모 모드';
+    for (const [sid] of DEMO_SESS) if (chars.has(sid)) handle({ session_id: sid, event: 'SessionEnd' });
+  } else {
+    demoBtn.classList.add('on'); demoBtn.textContent = '데모 끄기';
+    for (const [sid, cwd] of DEMO_SESS) handle({ session_id: sid, cwd, event: 'SessionStart' });
+    demoTimer = setInterval(demoTick, 1400);
+  }
+};
+</script>
+</body>
+</html>
