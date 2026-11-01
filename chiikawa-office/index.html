@@ -339,6 +339,8 @@ function drawFurniture(name, cx, bottom, width) {
 // ---------- 캐릭터 ----------
 // sprites/ 폴더에 그림을 넣으면 손그림 대신 사용: chiikawa.png 또는 chiikawa-type.png 처럼 자세별로
 const SPRITE_H = 78;
+// 캐릭터별 그림 크기 배율 (귀가 길면 몸이 작아 보여서 키워줌). 크기가 어색하면 여기 숫자만 바꾸세요
+const SPRITE_SCALE = { chiikawa: 1, hachiware: 1.05, usagi: 1.35, shisa: 1, rakko: 1, kurimanju: 1 };
 const POSES = ['sit', 'read', 'type', 'raise', 'jump', 'sleep', 'walk'];
 const sprites = {};
 for (const k of KINDS) {
@@ -450,7 +452,7 @@ function drawChar(c, t) {
 
   const img = spriteOf(k, pose);
   if (img) {
-    const h = SPRITE_H, w = h * img.width / img.height;
+    const h = SPRITE_H * (SPRITE_SCALE[k] || 1), w = h * img.width / img.height;
     ctx.save();
     if (pose === 'walk' && c.facing < 0) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.translate(-x, 0); }
     if (pose === 'type') ctx.translate(0, Math.sin(t * 16) * 1.5);
