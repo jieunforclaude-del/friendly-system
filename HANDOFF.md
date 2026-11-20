@@ -28,14 +28,14 @@
 | goesan-mungwang-ginkgo.md | 괴산 문광저수지 은행나무 | X | 발행 여부 미확인 |
 | goesan-pinkmuhly.md | 괴산 핑크힐 글라스정원 핑크뮬리 | X | 초안 제공 (방문일 11/1로 가정) |
 | gyeonggi-chonkangs-best10.md | 경기도 촌캉스 숙소 BEST 10 (겨울판) | O (여기어때) | 초안 제공 |
-| yellowballoon-tours.md | 노랑풍선 당일 버스투어 + 시티투어 | X (제휴 경로 없음) | 11/6 기준 초안 제공 |
+| yellowballoon-tours.md | 노랑풍선 당일 버스투어 + 시티투어 | X | 미발행 → korea-day-bus-tour-winter.md로 통합 |
 | incheon-jeil-fishing.md | 인천제일바다낚시 | X | 초안 제공 (쭈갑 시즌 11/30까지) |
 | korea-grand-festival-travel.md | 코리아 그랜드 페스티벌 여행 혜택 | X | 발행됨 (224468399778). 남은 것: "내일" → 날짜로, 기준일 문구, 네이버 항공 조건 보강 |
 | zoomzoomtour-promo.md | 줌줌투어 감사절 프로모션 | O (줌줌투어) | 보류 — 11/7 개인정보 유출 주장 글 있음, 공식 확인 후 발행 결정 |
 | kakao-travel-insurance.md | 카카오 여행자보험 후기 (태국 폰 침수 20만원 보상) | X (보험은 제휴 불가) | 초안 제공 |
 | gangnam-women-only-sauna.md | 강남 여성전용 사우나 5곳 | X | 모바일 형식 최신판 제공 |
 | seoul-women-only-sauna.md | 서울 15곳 버전 (2편 소재) | X | 보관용 |
-| korea-day-bus-tour-winter.md | 국내 당일 버스투어 12월 겨울 코스·신년일출 무박 (11/16 기준) | O (마이리얼트립 연합상품 2개) | 초안 제공 |
+| korea-day-bus-tour-winter.md | 국내 당일 버스투어 (1만원대·단풍 막차·겨울·신년일출, 11/20 기준) | O (마이리얼트립 연합상품: 문경 1일·신년일출 무박) | 11/20 발행 예정 초안 |
 | seoul-solo-sauna.md | 서울 1인 사우나 4곳 + 고온 보너스 (2026-11) | X | 초안 제공 (찾아보고 비교한 프레임) |
 
 ## 사용자 실제 경험 메모
