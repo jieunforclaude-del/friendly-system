@@ -57,7 +57,7 @@
 
 📍 **타인 투이 (Thanh Thúy)** : 117 Hàng Gai, Hoàn Kiếm (올드쿼터)
 
-[지도: 구글맵 '타인 투이 아오자이' 장소 카드]
+🗺 구글맵 : https://www.google.com/maps/search/?api=1&query=Thanh+Th%C3%BAy+%C3%81o+D%C3%A0i+117+H%C3%A0ng+Gai+Ho%C3%A0n+Ki%E1%BA%BFm+H%C3%A0+N%E1%BB%99i
 
 첫째 날 올드쿼터를 돌아다니다가 들렀어요.
 
@@ -147,7 +147,7 @@
 
 📍 46 Thanh Niên, Tây Hồ (서호)
 
-[지도: 구글맵 '쩐꾸옥 사원 (Chùa Trấn Quốc)' 장소 카드]
+🗺 구글맵 : https://www.google.com/maps/search/?api=1&query=Ch%C3%B9a+Tr%E1%BA%A5n+Qu%E1%BB%91c+46+Thanh+Ni%C3%AAn+T%C3%A2y+H%E1%BB%93+H%C3%A0+N%E1%BB%99i
 
 💰 입장료 : **무료**
 
@@ -265,7 +265,9 @@
 
 ✔ 창가 자리에서 **서호**가 보여요
 
-[지도: 구글맵 '쩐꾸옥 근처 하이랜드 커피' 장소 카드]
+🗺 구글맵 : https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+near+Ch%C3%B9a+Tr%E1%BA%A5n+Qu%E1%BB%91c+H%C3%A0+N%E1%BB%99i
+
+[직접 입력: 다녀온 지점 구글맵 공유 링크로 바꾸기]
 
 [직접 입력(선택): 마신 음료·가격]
 

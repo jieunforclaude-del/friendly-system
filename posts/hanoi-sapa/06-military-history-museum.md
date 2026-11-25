@@ -34,7 +34,7 @@
 
 📍 Km 6+500 Đại lộ Thăng Long, Nam Từ Liêm, Hà Nội
 
-[지도: 구글맵 'Vietnam Military History Museum' 장소 카드]
+🗺 구글맵 : https://www.google.com/maps/search/?api=1&query=Vietnam+Military+History+Museum+%C4%90%E1%BA%A1i+l%E1%BB%99+Th%C4%83ng+Long+H%C3%A0+N%E1%BB%99i
 
 💰 입장료 : **40,000동** (약 2,200원)
 

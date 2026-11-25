@@ -34,7 +34,7 @@
 
 (**문묘 바로 맞은편**이에요!)
 
-[지도: 구글맵 'Vietnam National Fine Arts Museum' 장소 카드]
+🗺 구글맵 : https://www.google.com/maps/search/?api=1&query=Vietnam+National+Fine+Arts+Museum+66+Nguy%E1%BB%85n+Th%C3%A1i+H%E1%BB%8Dc+H%C3%A0+N%E1%BB%99i
 
 💰 입장료 : 성인 **40,000동** (약 2,200원)
 
